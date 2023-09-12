@@ -51,15 +51,19 @@ def index_knowledge() -> VectorStoreIndex:
 
     try:
         logging.info("Loading data from Github: %s/%s", loader._owner, loader._repo) 
+
         docs = loader.load_data(branch="main")
         for doc in docs:
             logging.info(doc.extra_info)
+            doc.metadata = {'filename': doc.extra_info['file_name'], 'author': "LlamaIndex"}
+
     except Exception as e:
         logging.error("Error loading data from Github: %s", e)
         return None
     
     try:
         logging.info("Creating ServiceContext...")
+        
         service_context = ServiceContext.from_defaults(
             llm=OpenAI(
                 model="gpt-3.5-turbo",
@@ -74,7 +78,7 @@ def index_knowledge() -> VectorStoreIndex:
         logging.info("Persisting index")
         index.storage_context.persist(persist_dir="./storage")
         
-        logging.info("Data knowledge ingestion processed completed (OK)")
+        logging.info("Data-Knowledge ingestion completed (OK)")
     except Exception as e:
         logging.error("Error indexing or persisting data: %s", e)
         return None

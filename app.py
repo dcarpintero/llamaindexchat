@@ -39,7 +39,8 @@ def display_chat_history(messages):
             st.write(message["content"])
 
 
-def generate_assistant_response(prompt, chat_engine):
+@st.cache_data(max_entries=1024, show_spinner=False)
+def generate_assistant_response(prompt):
     """Generate assistant response and update session state."""
     with st.chat_message("assistant"):
         with st.spinner("I am on it..."):
@@ -57,20 +58,28 @@ chat_engine = index.as_chat_engine(chat_mode="condense_question", verbose=True)
 user_input_button = None
 
 btn_llama_index = st.session_state.get("btn_llama_index", False)
-btn_rag = st.session_state.get("btn_rag", False)
 btn_retriever = st.session_state.get("btn_retriever", False)
+btn_diff = st.session_state.get("btn_diff", False)
+btn_rag = st.session_state.get("btn_rag", False)
 
-if st.button("What is LlamaIndex?", type="primary", disabled=btn_llama_index):
-    user_input_button = "What is LlamaIndex?"
-    st.session_state.btn_llama_index = True
+col1, col2, col3, col4 = st.columns([1,1,1,1])
 
-if st.button("how to make my RAG application performant?", type="primary", disabled=btn_rag):
-    user_input_button = "how to make my RAG application performant?"
-    st.session_state.btn_rag = True
-
-if st.button("how to use a loader to retrieve content from a Notion page?", type="primary", disabled=btn_retriever):
-    user_input_button = "how to use a loader to retrieve content from a Notion page?"
-    st.session_state.btn_retriever = True
+with col1:
+    if st.button("explain the basic usage pattern of LlamaIndex", type="primary", disabled=btn_llama_index):
+        user_input_button = "explain the basic usage pattern in LlamaIndex"
+        st.session_state.btn_llama_index = True
+with col2:
+    if st.button("how can I ingest data from the GoogleDocsReader?", type="primary", disabled=btn_retriever):
+        user_input_button = "how can I ingest data from the GoogleDocsReader?"
+        st.session_state.btn_retriever = True
+with col3:
+    if st.button("what's the difference between document & node?", type="primary", disabled=btn_diff):
+        user_input_button = "what's the difference between document and node?"
+        st.session_state.btn_diff = True
+with col4:
+    if st.button("how can I make a RAG application performant?", type="primary", disabled=btn_rag):
+        user_input_button = "how can I make a RAG application performant?"
+        st.session_state.btn_rag = True
 
 # User input
 user_input = st.chat_input("Your question")
@@ -82,4 +91,4 @@ display_chat_history(st.session_state.messages)
 
 # Generate response
 if st.session_state.messages[-1]["role"] != "assistant":
-    generate_assistant_response(user_input or user_input_button, chat_engine)
+    generate_assistant_response(user_input or user_input_button)

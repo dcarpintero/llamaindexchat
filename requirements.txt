@@ -1,0 +1,4 @@
+langchain==0.0.286
+llama-index==0.8.24
+openai==0.28.0
+streamlit==1.26.0

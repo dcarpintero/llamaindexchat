@@ -17,9 +17,10 @@ if not openai.api_key:
 
 
 st.header("Chat with LLamaIndex Docs 💬📚")
-if "messages" not in st.session_state:
+
+if "messages" not in st.session_state:    
     st.session_state.messages = [
-        {"role": "assistant", "content": "Ask me anything about LlamaIndex Documentation!"}
+        {"role": "assistant", "content": "Try one of the sample questions or ask your own!"}
     ]
 
 
@@ -52,14 +53,33 @@ def generate_assistant_response(prompt, chat_engine):
 index = load_data()
 chat_engine = index.as_chat_engine(chat_mode="condense_question", verbose=True)
 
+# Sample Questions for User input
+user_input_button = None
+
+btn_llama_index = st.session_state.get("btn_llama_index", False)
+btn_rag = st.session_state.get("btn_rag", False)
+btn_retriever = st.session_state.get("btn_retriever", False)
+
+if st.button("What is LlamaIndex?", type="primary", disabled=btn_llama_index):
+    user_input_button = "What is LlamaIndex?"
+    st.session_state.btn_llama_index = True
+
+if st.button("how to make my RAG application performant?", type="primary", disabled=btn_rag):
+    user_input_button = "how to make my RAG application performant?"
+    st.session_state.btn_rag = True
+
+if st.button("how to use a loader to retrieve content from a Notion page?", type="primary", disabled=btn_retriever):
+    user_input_button = "how to use a loader to retrieve content from a Notion page?"
+    st.session_state.btn_retriever = True
+
 # User input
 user_input = st.chat_input("Your question")
-if user_input:
-    st.session_state.messages.append({"role": "user", "content": user_input})
+if user_input or user_input_button:
+    st.session_state.messages.append({"role": "user", "content": user_input or user_input_button})
 
 # Display previous chat
 display_chat_history(st.session_state.messages)
 
 # Generate response
 if st.session_state.messages[-1]["role"] != "assistant":
-    generate_assistant_response(user_input, chat_engine)
+    generate_assistant_response(user_input or user_input_button, chat_engine)

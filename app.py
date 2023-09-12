@@ -16,7 +16,7 @@ if not openai.api_key:
     raise Exception("OPENAI_API_KEY environment variable not set.")
 
 
-st.header("Chat with LLamaIndex Docs 💬📚")
+st.header("Chat with 🦙 LlamaIndex Docs 🗂️")
 
 if "messages" not in st.session_state:    
     st.session_state.messages = [

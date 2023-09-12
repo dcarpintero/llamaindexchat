@@ -12,19 +12,33 @@ from llama_hub.github_repo import GithubRepositoryReader, GithubClient
 from dotenv import load_dotenv
 import openai
 import os
+import logging
 
+def load_environment_vars() -> dict:
+    """Load required environment variables. Raise an exception if any are missing."""
+    load_dotenv()
+    
+    api_key = os.getenv("OPENAI_API_KEY")
+    github_token = os.getenv("GITHUB_TOKEN")
+    
+    if not api_key or not github_token:
+        raise EnvironmentError("Missing environment variables.")
+    
+    if not github_token:
+        raise EnvironmentError("GITHUB_TOKEN environment variable not set.")
+    
+    logging.info("Environment variables loaded.")
+    return {"OPENAI_API_KEY": api_key, "GITHUB_TOKEN": github_token}
 
 def index_knowledge() -> VectorStoreIndex:
     """Load and Index Knowledge Base"""
 
-    load_dotenv()
-    openai.api_key = os.getenv("OPENAI_API_KEY")
-    if not openai.api_key:
-        raise Exception("OPENAI_API_KEY environment variable not set.")
-
+    env_vars = load_environment_vars()
+    openai.api_key = env_vars['OPENAI_API_KEY']
+    
     download_loader("GithubRepositoryReader")
-
     github_client = GithubClient(os.getenv("GITHUB_TOKEN"))
+
     loader = GithubRepositoryReader(
         github_client,
         owner =                  "jerryjliu",
@@ -35,21 +49,36 @@ def index_knowledge() -> VectorStoreIndex:
         concurrent_requests =    10,
     )
 
-    docs = loader.load_data(branch="main")
-
-    for doc in docs:
-        print(doc.extra_info)
-
-    service_context = ServiceContext.from_defaults(
-        llm=OpenAI(
-            model="gpt-3.5-turbo",
-            temperature=0.5,
-            system_prompt="You are a specialized AI trained in the usage of LlamaIndex.",
+    try:
+        logging.info("Loading data from Github: %s/%s", loader._owner, loader._repo) 
+        docs = loader.load_data(branch="main")
+        for doc in docs:
+            logging.info(doc.extra_info)
+    except Exception as e:
+        logging.error("Error loading data from Github: %s", e)
+        return None
+    
+    try:
+        logging.info("Creating ServiceContext...")
+        service_context = ServiceContext.from_defaults(
+            llm=OpenAI(
+                model="gpt-3.5-turbo",
+                temperature=0.5,
+                system_prompt="You are a specialized AI trained in the usage of LlamaIndex.",
+            )
         )
-    )
 
-    index = VectorStoreIndex.from_documents(docs, service_context=service_context)
-    index.storage_context.persist(persist_dir="./vectorstorage")
+        logging.info("Indexing data...")
+        index = VectorStoreIndex.from_documents(docs, service_context=service_context)
+        
+        logging.info("Persisting index")
+        index.storage_context.persist(persist_dir="./storage")
+        
+        logging.info("Data knowledge ingestion processed completed (OK)")
+    except Exception as e:
+        logging.error("Error indexing or persisting data: %s", e)
+        return None
 
 if __name__ == "__main__":
+    logging.basicConfig(level=logging.INFO, format="%(asctime)s [%(levelname)s] %(message)s")
     index_knowledge()

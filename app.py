@@ -39,20 +39,25 @@ def display_chat_history(messages):
             st.write(message["content"])
 
 
-@st.cache_data(max_entries=1024, show_spinner=False)
 def generate_assistant_response(prompt):
     """Generate assistant response and update session state."""
     with st.chat_message("assistant"):
         with st.spinner("I am on it..."):
-            response = chat_engine.chat(prompt)
+            response = query_chatengine(prompt)
+
             st.info(extract_filenames(response.source_nodes))
             st.write(response.response)
             st.session_state.messages.append(
                 {"role": "assistant", "content": response.response})
+            
+
+@st.cache_data(max_entries=1024, show_spinner=False)
+def query_chatengine(prompt):
+    return chat_engine.chat(prompt)
 
 
 def extract_filenames(source_nodes):
-    src = f"'The sources of this response are:'\n"
+    src = f"The sources of this response are:\n"
     for item in source_nodes:
         if hasattr(item, "metadata"):
             filename = f"\n'{item.metadata.get('filename')}'\n"

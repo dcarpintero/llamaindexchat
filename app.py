@@ -45,10 +45,19 @@ def generate_assistant_response(prompt):
     with st.chat_message("assistant"):
         with st.spinner("I am on it..."):
             response = chat_engine.chat(prompt)
+            st.info(extract_filenames(response.source_nodes))
             st.write(response.response)
             st.session_state.messages.append(
                 {"role": "assistant", "content": response.response})
 
+
+def extract_filenames(source_nodes):
+    src = f"'The sources of this response are:'\n"
+    for item in source_nodes:
+        if hasattr(item, "metadata"):
+            filename = f"\n'{item.metadata.get('filename')}'\n"
+            src += filename
+    return src
 
 # Main 
 index = load_data()

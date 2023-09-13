@@ -1,5 +1,5 @@
 """
-Web-based Chat App using Streamlit, LLamaIndex and OpenaI.
+Web-based App to chat with LlamaIndex Docs using Streamlit, LLamaIndex and OpenaI.
 
 Author:
     @dcarpintero : https://github.com/dcarpintero

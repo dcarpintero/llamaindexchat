@@ -64,6 +64,25 @@ def extract_filenames(source_nodes):
             src += filename
     return src
 
+def sidebar():
+    """Configure the sidebar and return the user's preferences."""
+    
+    with st.sidebar.expander("🔑 OPENAI-API-KEY", expanded=True):
+        openai_api_key = st.text_input(label='OPENAI-API-KEY', type='password', key='openai_api_key', label_visibility='hidden').strip()
+        if not openai_api_key:
+            st.warning('Please enter a valid OPENAI-API-KEY')
+
+    with st.sidebar.expander("💲 COST ESTIMATION", expanded=True):
+        cost = st.markdown('Cost per 1k tokens: $0.002')
+
+    with st.sidebar.expander("🔧 SETTINGS", expanded=True):
+        cache = st.toggle('Cache Results', value=True)
+        sources = st.toggle('Display Sources', value=True)
+        streaming = st.toggle('Streaming', value=False)
+
+    clear = st.button('🦙 Clear History', type="primary")
+
+    return openai_api_key, cache, sources, streaming, clear
 # Main 
 index = load_data()
 chat_engine = index.as_chat_engine(chat_mode="condense_question", verbose=True)

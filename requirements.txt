@@ -1,4 +1,7 @@
 langchain==0.0.286
+langsmith==0.0.35
+llama-hub==0.0.29
 llama-index==0.8.24
+nltk==3.8.1
 openai==0.28.0
 streamlit==1.26.0

@@ -8,7 +8,6 @@ import streamlit as st
 from llama_index import VectorStoreIndex, load_index_from_storage, StorageContext
 from dotenv import load_dotenv
 import openai
-import os
 
 
 st.set_page_config(
@@ -18,16 +17,15 @@ st.set_page_config(
     menu_items={"About": "Built by @dcarpintero with Streamlit & LLamaIndex"},
 )
 
-load_dotenv()
-openai.api_key = os.getenv("OPENAI_API_KEY")
-if not openai.api_key:
-    raise Exception("OPENAI_API_KEY environment variable not set.")
-
 
 @st.cache_resource(show_spinner=False)
-def load_data() -> VectorStoreIndex:
+def load_data(settings) -> VectorStoreIndex:
     """Load VectoreStoreIndex"""
+    if not settings["openai_api_key"]:
+        st.stop()
+
     with st.spinner("Loading Vectore Store Index..."):
+        openai.api_key = settings["openai_api_key"]
         index = load_index_from_storage(StorageContext.from_defaults(persist_dir="./storage"))
         return index
 
@@ -47,26 +45,33 @@ def clear_chat_history():
 
 def generate_assistant_response(prompt, chat_engine, settings):
     """Generate assistant response and update session state."""
+    if not settings["openai_api_key"]:
+        st.info("Please add your OpenAI API key to continue!")
+        st.stop()
+
     with st.chat_message("assistant"):
         with st.spinner("I am on it..."):
             if settings["with_cache"]:
-                response = query_chatengine_cache(prompt, chat_engine)
+                response = query_chatengine_cache(prompt, chat_engine, settings)
             else:
-                response = query_chatengine(prompt, chat_engine)
+                response = query_chatengine(prompt, chat_engine, settings)
 
             if settings["with_sources"]:
                 st.info(extract_filenames(response.source_nodes))
+
             st.write(response.response)
             st.session_state.messages.append(
                 {"role": "assistant", "content": response.response})
             
 
 @st.cache_data(max_entries=1024, show_spinner=False)
-def query_chatengine_cache(prompt, _chat_engine):
+def query_chatengine_cache(prompt, _chat_engine, settings):
+    openai.api_key = settings["openai_api_key"]
     return _chat_engine.chat(prompt)
 
 
-def query_chatengine(prompt, chat_engine):
+def query_chatengine(prompt, chat_engine, settings):
+    openai.api_key = settings["openai_api_key"]
     return chat_engine.chat(prompt)
 
 
@@ -83,11 +88,10 @@ def sidebar():
     settings = {}
     
     with st.sidebar.expander("🔑 OPENAI-API-KEY", expanded=True):
-        openai_api_key = st.text_input(label='OPENAI-API-KEY', type='password', key='openai_api_key', label_visibility='hidden').strip()
-        if not openai_api_key:
-            st.warning('Please enter a valid key')
+        settings["openai_api_key"] = st.text_input(label='OPENAI-API-KEY', type='password', key='openai_api_key', label_visibility='hidden').strip()
+        "[Get an OpenAI API key](https://platform.openai.com/account/api-keys)"
 
-    with st.sidebar.expander("💲 COST ESTIMATION", expanded=True):
+    with st.sidebar.expander("💲 OPENAI COST ESTIMATION", expanded=True):
         cost = st.markdown('Cost per 1k tokens: $0.002')
 
     with st.sidebar.expander("🔧 SETTINGS", expanded=True):
@@ -96,21 +100,24 @@ def sidebar():
         settings["with_streaming"] = st.toggle('Streaming', value=False, disabled=True)
 
     st.sidebar.button('Clear Messages', type="primary", on_click=clear_chat_history)
-
-    return openai_api_key, settings
+    st.sidebar.divider()
+    with st.sidebar:
+        "[![LlamaIndex Docs](https://img.shields.io/badge/LlamaIndex%20Docs-gray)](https://gpt-index.readthedocs.io/en/latest/index.html)"
+        
+    return settings
 
 def layout(settings):
-    index = load_data()
-    chat_engine = index.as_chat_engine(chat_mode="condense_question", verbose=True)
-
     # Main
-    st.info("This RAG Demo extends OpenAI knowledge with LlamaIndex\n\n", icon="🤖")
     st.header("Chat with 🦙 LlamaIndex Docs 🗂️")
 
-    if "messages" not in st.session_state:    
-        st.session_state.messages = [
-            {"role": "assistant", "content": "Try one of the sample questions or ask your own!"}
-        ]
+    # Get Started
+    if not settings["openai_api_key"]:
+        st.info("Hi there! Add your OPENAI-API-KEY on the sidebar field to get started!\n\n", icon="🚨")
+
+    # Load Index
+    index = load_data(settings)
+    if index:
+        chat_engine = index.as_chat_engine(chat_mode="condense_question", verbose=True)
 
     # Sample Questions for User input
     user_input_button = None
@@ -139,6 +146,12 @@ def layout(settings):
             user_input_button = "how can I make a RAG application performant?"
             st.session_state.btn_rag = True
 
+    # System Message
+    if "messages" not in st.session_state:    
+        st.session_state.messages = [
+            {"role": "assistant", "content": "Try one of the sample questions or ask your own!"}
+        ]
+
     # User input
     user_input = st.chat_input("Your question")
     if user_input or user_input_button:
@@ -159,7 +172,7 @@ def main():
     """
     Set up user preferences, and layout.
     """
-    openai_api_key, settings = sidebar()
+    settings = sidebar()
     layout(settings)
 
 if __name__ == "__main__":

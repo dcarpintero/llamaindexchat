@@ -17,6 +17,8 @@ st.set_page_config(
     menu_items={"About": "Built by @dcarpintero with Streamlit & LLamaIndex"},
 )
 
+if 'token_counter' not in st.session_state:
+    st.session_state['token_counter'] = 0
 
 @st.cache_resource(show_spinner=False)
 def load_data(settings) -> VectorStoreIndex:
@@ -63,6 +65,8 @@ def generate_assistant_response(prompt, chat_engine, settings):
             st.session_state.messages.append(
                 {"role": "assistant", "content": response.response})
             
+            update_token_counter(response.response)
+            
 
 @st.cache_data(max_entries=1024, show_spinner=False)
 def query_chatengine_cache(prompt, _chat_engine, settings):
@@ -83,6 +87,10 @@ def extract_filenames(source_nodes):
             src += filename
     return src
 
+def update_token_counter(response):
+    # 1,000 tokens is about 750 words
+    st.session_state['token_counter'] += round( (750 / 1000) * len(response) )
+
 def sidebar():
     """Configure the sidebar and return the user's preferences."""
     settings = {}
@@ -91,8 +99,10 @@ def sidebar():
         settings["openai_api_key"] = st.text_input(label='OPENAI-API-KEY', type='password', key='openai_api_key', label_visibility='hidden').strip()
         "[Get an OpenAI API key](https://platform.openai.com/account/api-keys)"
 
-    with st.sidebar.expander("💲 OPENAI COST ESTIMATION", expanded=True):
-        cost = st.markdown('Cost per 1k tokens: $0.002')
+    with st.sidebar.expander("💲 GPT3.5 COST ESTIMATION", expanded=True):
+        st.markdown('Cost per 1k tokens: $0.002')
+        st.markdown('Estimation ({0} tokens) : ${1}'.format(st.session_state['token_counter'], 
+                                                            round( (st.session_state['token_counter'] / 1000) * 0.002, 5)))
 
     with st.sidebar.expander("🔧 SETTINGS", expanded=True):
         settings["with_cache"] = st.toggle('Cache Results', value=True)
@@ -112,7 +122,7 @@ def layout(settings):
 
     # Get Started
     if not settings["openai_api_key"]:
-        st.info("Hi there! Add your OPENAI-API-KEY on the sidebar field to get started!\n\n", icon="🚨")
+        st.warning("Hi there! Add your OPENAI-API-KEY on the sidebar field to get started!\n\n", icon="🚨")
 
     # Load Index
     index = load_data(settings)

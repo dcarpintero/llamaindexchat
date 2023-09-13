@@ -1,7 +1,8 @@
 """
-Knowledge Ingestion using LlamaIndex, GithubRepositoryReader, and OpenAI.
+Knowledge Ingestion of the markdown files in the docs folder of the llama_index repository:
+- https://github.com/jerryjliu/llama_index
 
-It will index all the markdown files in the docs folder of the llama_index repository.
+Built with LlamaIndex, GithubRepositoryReader, and OpenAI.
 
 Author:
     @dcarpintero : https://github.com/dcarpintero
@@ -21,8 +22,8 @@ def load_environment_vars() -> dict:
     api_key = os.getenv("OPENAI_API_KEY")
     github_token = os.getenv("GITHUB_TOKEN")
     
-    if not api_key or not github_token:
-        raise EnvironmentError("Missing environment variables.")
+    if not api_key:
+        raise EnvironmentError("OPENAI_API_KEY environment variable not set.")
     
     if not github_token:
         raise EnvironmentError("GITHUB_TOKEN environment variable not set.")
@@ -31,7 +32,7 @@ def load_environment_vars() -> dict:
     return {"OPENAI_API_KEY": api_key, "GITHUB_TOKEN": github_token}
 
 def index_knowledge() -> VectorStoreIndex:
-    """Load and Index Knowledge Base"""
+    """Load and Index Knowledge Base from GitHub Repository"""
 
     env_vars = load_environment_vars()
     openai.api_key = env_vars['OPENAI_API_KEY']
@@ -75,10 +76,10 @@ def index_knowledge() -> VectorStoreIndex:
         logging.info("Indexing data...")
         index = VectorStoreIndex.from_documents(docs, service_context=service_context)
         
-        logging.info("Persisting index")
+        logging.info("Persisting index on ./storage...")
         index.storage_context.persist(persist_dir="./storage")
         
-        logging.info("Data-Knowledge ingestion completed (OK)")
+        logging.info("Data-Knowledge ingestion process is completed (OK)")
     except Exception as e:
         logging.error("Error indexing or persisting data: %s", e)
         return None

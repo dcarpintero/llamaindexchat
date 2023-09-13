@@ -10,18 +10,18 @@ from dotenv import load_dotenv
 import openai
 import os
 
+
+st.set_page_config(
+    page_title="Chat with LlamaIndex Docs",
+    page_icon="🦙",
+    initial_sidebar_state="expanded",
+    menu_items={"About": "Built by @dcarpintero with Streamlit & LLamaIndex"},
+)
+
 load_dotenv()
 openai.api_key = os.getenv("OPENAI_API_KEY")
 if not openai.api_key:
     raise Exception("OPENAI_API_KEY environment variable not set.")
-
-
-st.header("Chat with 🦙 LlamaIndex Docs 🗂️")
-
-if "messages" not in st.session_state:    
-    st.session_state.messages = [
-        {"role": "assistant", "content": "Try one of the sample questions or ask your own!"}
-    ]
 
 
 @st.cache_resource(show_spinner=False)
@@ -39,13 +39,14 @@ def display_chat_history(messages):
             st.write(message["content"])
 
 
-def generate_assistant_response(prompt, chat_engine):
+def generate_assistant_response(prompt, chat_engine, with_sources):
     """Generate assistant response and update session state."""
     with st.chat_message("assistant"):
         with st.spinner("I am on it..."):
             response = query_chatengine(prompt, chat_engine)
 
-            st.info(extract_filenames(response.source_nodes))
+            if with_sources:
+                st.info(extract_filenames(response.source_nodes))
             st.write(response.response)
             st.session_state.messages.append(
                 {"role": "assistant", "content": response.response})
@@ -76,18 +77,25 @@ def sidebar():
         cost = st.markdown('Cost per 1k tokens: $0.002')
 
     with st.sidebar.expander("🔧 SETTINGS", expanded=True):
-        cache = st.toggle('Cache Results', value=True)
-        sources = st.toggle('Display Sources', value=True)
-        streaming = st.toggle('Streaming', value=False)
+        with_cache = st.toggle('Cache Results', value=True)
+        with_sources = st.toggle('Display Sources', value=True)
+        with_streaming = st.toggle('Streaming', value=False, disabled=True)
 
     clear = st.sidebar.button('Clear Messages', type="primary")
 
-    return openai_api_key, cache, sources, streaming, clear
+    return openai_api_key, with_cache, with_sources, with_streaming, clear
 
-def layout():
-    # Main 
+def layout(with_sources):
     index = load_data()
     chat_engine = index.as_chat_engine(chat_mode="condense_question", verbose=True)
+
+    # Main
+    st.header("Chat with 🦙 LlamaIndex Docs 🗂️")
+
+    if "messages" not in st.session_state:    
+        st.session_state.messages = [
+            {"role": "assistant", "content": "Try one of the sample questions or ask your own!"}
+        ]
 
     # Sample Questions for User input
     user_input_button = None
@@ -126,21 +134,14 @@ def layout():
 
     # Generate response
     if st.session_state.messages[-1]["role"] != "assistant":
-        generate_assistant_response(user_input or user_input_button, chat_engine)
+        generate_assistant_response(user_input or user_input_button, chat_engine, with_sources)
 
 def main():
     """
     Set up user preferences, and layout.
     """
-    #st.set_page_config(
-    #    page_title="Chat wih LLMs Papers - Powered by LLamaIndex",
-    #    page_icon="💬📚",
-    #    initial_sidebar_state="expanded",
-    #    menu_items={"About": "Built by @dcarpintero with Streamlit & LLamaIndex"},
-    #)
-
-    openai_api_key, cache, sources, streaming, clear = sidebar()
-    layout()
+    openai_api_key, with_cache, with_sources, with_streaming, clear = sidebar()
+    layout(with_sources)
 
 if __name__ == "__main__":
     main()

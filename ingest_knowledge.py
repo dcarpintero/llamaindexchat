@@ -7,11 +7,10 @@ Built with LlamaIndex, GithubRepositoryReader, and OpenAI.
 Author:
     @dcarpintero : https://github.com/dcarpintero
 """
-from llama_index import download_loader, ServiceContext, VectorStoreIndex
-from llama_index.llms import OpenAI
+from llama_index import download_loader, VectorStoreIndex
+from llama_index.node_parser import SimpleNodeParser
 from llama_hub.github_repo import GithubRepositoryReader, GithubClient
 from dotenv import load_dotenv
-import json
 import openai
 import os
 import logging
@@ -53,8 +52,16 @@ def initialize_github_loader(github_token: str) -> GithubRepositoryReader:
     return loader
 
 
-def load_and_index_data(loader: GithubRepositoryReader) -> VectorStoreIndex:
+def load_and_index_data(loader) -> VectorStoreIndex:
     """Load and Index Knowledge Base from GitHub Repository"""
+
+    docs = load_data(loader)
+    index = index_data(docs)
+    return index
+
+
+def load_data(loader: GithubRepositoryReader) -> []:
+    """Load Knowledge Base from GitHub Repository"""
 
     logging.info("Loading data from Github: %s/%s", loader._owner, loader._repo)
     docs = loader.load_data(branch="main")
@@ -62,17 +69,17 @@ def load_and_index_data(loader: GithubRepositoryReader) -> VectorStoreIndex:
         logging.info(doc.extra_info)
         doc.metadata = {'filename': doc.extra_info['file_name'], 'author': "LlamaIndex"}
         
-    logging.info("Creating ServiceContext...")
-    service_context = ServiceContext.from_defaults(
-        llm=OpenAI(
-            model="gpt-3.5-turbo",
-            temperature=0.5,
-            system_prompt="You are a specialized AI trained in the usage of LlamaIndex.",
-        )
-    )
+    return docs
 
-    logging.info("Indexing data...")
-    index = VectorStoreIndex.from_documents(docs, service_context=service_context)
+def index_data(docs: []) -> VectorStoreIndex:
+    """Index Documents"""
+    
+    logging.info("Parsing documents into nodes...")
+    parser = SimpleNodeParser.from_defaults(chunk_size=1024, chunk_overlap=32)
+    nodes = parser.get_nodes_from_documents(docs)
+
+    logging.info("Indexing nodes...")
+    index = VectorStoreIndex(nodes)
         
     logging.info("Persisting index on ./storage...")
     index.storage_context.persist(persist_dir="./storage")
@@ -88,7 +95,7 @@ if __name__ == "__main__":
         openai.api_key = env_vars['OPENAI_API_KEY']
 
         loader = initialize_github_loader(env_vars['GITHUB_TOKEN'])
-        index = load_and_index_data(loader)
+        load_and_index_data(loader)
     except Exception as ex:
         logging.error("Unexpected Error: %s", ex)
         raise ex

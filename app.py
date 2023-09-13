@@ -93,7 +93,7 @@ def extract_filenames(source_nodes):
 
 def update_token_counter(response):
     # 1,000 tokens is about 750 words
-    st.session_state['token_counter'] += round( (750 / 1000) * len(response) )
+    st.session_state['token_counter'] += round( 0.75 * len(response) )
 
 def sidebar():
     """Configure the sidebar and return the user's preferences."""

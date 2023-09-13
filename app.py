@@ -39,13 +39,22 @@ def display_chat_history(messages):
             st.write(message["content"])
 
 
-def generate_assistant_response(prompt, chat_engine, with_sources):
+def clear_chat_history():
+    st.session_state.messages = [
+            {"role": "assistant", "content": "Try one of the sample questions or ask your own!"}
+        ]
+
+
+def generate_assistant_response(prompt, chat_engine, settings):
     """Generate assistant response and update session state."""
     with st.chat_message("assistant"):
         with st.spinner("I am on it..."):
-            response = query_chatengine(prompt, chat_engine)
+            if settings["with_cache"]:
+                response = query_chatengine_cache(prompt, chat_engine)
+            else:
+                response = query_chatengine(prompt, chat_engine)
 
-            if with_sources:
+            if settings["with_sources"]:
                 st.info(extract_filenames(response.source_nodes))
             st.write(response.response)
             st.session_state.messages.append(
@@ -53,8 +62,12 @@ def generate_assistant_response(prompt, chat_engine, with_sources):
             
 
 @st.cache_data(max_entries=1024, show_spinner=False)
-def query_chatengine(prompt, _chat_engine):
+def query_chatengine_cache(prompt, _chat_engine):
     return _chat_engine.chat(prompt)
+
+
+def query_chatengine(prompt, chat_engine):
+    return chat_engine.chat(prompt)
 
 
 def extract_filenames(source_nodes):
@@ -67,6 +80,7 @@ def extract_filenames(source_nodes):
 
 def sidebar():
     """Configure the sidebar and return the user's preferences."""
+    settings = {}
     
     with st.sidebar.expander("🔑 OPENAI-API-KEY", expanded=True):
         openai_api_key = st.text_input(label='OPENAI-API-KEY', type='password', key='openai_api_key', label_visibility='hidden').strip()
@@ -77,15 +91,15 @@ def sidebar():
         cost = st.markdown('Cost per 1k tokens: $0.002')
 
     with st.sidebar.expander("🔧 SETTINGS", expanded=True):
-        with_cache = st.toggle('Cache Results', value=True)
-        with_sources = st.toggle('Display Sources', value=True)
-        with_streaming = st.toggle('Streaming', value=False, disabled=True)
+        settings["with_cache"] = st.toggle('Cache Results', value=True)
+        settings["with_sources"] = st.toggle('Display Sources', value=True)
+        settings["with_streaming"] = st.toggle('Streaming', value=False, disabled=True)
 
-    clear = st.sidebar.button('Clear Messages', type="primary")
+    st.sidebar.button('Clear Messages', type="primary", on_click=clear_chat_history)
 
-    return openai_api_key, with_cache, with_sources, with_streaming, clear
+    return openai_api_key, settings
 
-def layout(with_sources):
+def layout(settings):
     index = load_data()
     chat_engine = index.as_chat_engine(chat_mode="condense_question", verbose=True)
 
@@ -135,14 +149,18 @@ def layout(with_sources):
 
     # Generate response
     if st.session_state.messages[-1]["role"] != "assistant":
-        generate_assistant_response(user_input or user_input_button, chat_engine, with_sources)
+        try:
+            generate_assistant_response(user_input or user_input_button, chat_engine, settings)
+        except Exception as ex:
+            st.error(str(ex))
+        
 
 def main():
     """
     Set up user preferences, and layout.
     """
-    openai_api_key, with_cache, with_sources, with_streaming, clear = sidebar()
-    layout(with_sources)
+    openai_api_key, settings = sidebar()
+    layout(settings)
 
 if __name__ == "__main__":
     main()

@@ -44,7 +44,7 @@ def clear_chat_history():
             {"role": "assistant", "content": "Try one of the sample questions or ask your own!"}
         ]
     st.session_state["btn_llama_index"] = False
-    st.session_state["btn_retriever"] =  False
+    st.session_state["btn_retriever"] = False
     st.session_state["btn_diff"] = False
     st.session_state["btn_rag"] = False
 

@@ -41,12 +41,12 @@ def initialize_github_loader(github_token: str) -> GithubRepositoryReader:
 
     loader = GithubRepositoryReader(
         github_client,
-        owner =                  "jerryjliu",
-        repo =                   "llama_index",
-        filter_directories =     (["docs"], GithubRepositoryReader.FilterType.INCLUDE),
+        owner = "jerryjliu",
+        repo = "llama_index",
+        filter_directories = (["docs"], GithubRepositoryReader.FilterType.INCLUDE),
         filter_file_extensions = ([".md"], GithubRepositoryReader.FilterType.INCLUDE),
-        verbose =                False,
-        concurrent_requests =    10,
+        verbose = False,
+        concurrent_requests = 10,
     )
 
     return loader

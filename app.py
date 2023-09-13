@@ -58,10 +58,10 @@ def query_chatengine(prompt, _chat_engine):
 
 
 def extract_filenames(source_nodes):
-    src = f"The sources of this response are:\n"
+    src = f"The sources of this response are:\n\n"
     for item in source_nodes:
         if hasattr(item, "metadata"):
-            filename = f"\n'{item.metadata.get('filename')}'\n"
+            filename = f"'{item.metadata.get('filename')}'\n\n"
             src += filename
     return src
 
@@ -90,6 +90,7 @@ def layout(with_sources):
     chat_engine = index.as_chat_engine(chat_mode="condense_question", verbose=True)
 
     # Main
+    st.info("This RAG Demo extends OpenAI knowledge with LlamaIndex\n\n", icon="🤖")
     st.header("Chat with 🦙 LlamaIndex Docs 🗂️")
 
     if "messages" not in st.session_state:    

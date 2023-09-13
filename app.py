@@ -100,9 +100,9 @@ def sidebar():
         "[Get an OpenAI API key](https://platform.openai.com/account/api-keys)"
 
     with st.sidebar.expander("💲 GPT3.5 COST ESTIMATION", expanded=True):
+        token_counter = st.session_state['token_counter']
         st.markdown('Cost per 1k tokens: $0.002')
-        st.markdown('Estimation ({0} tokens) : ${1}'.format(st.session_state['token_counter'], 
-                                                            round( (st.session_state['token_counter'] / 1000) * 0.002, 5)))
+        st.markdown('Estimation ({0} tokens) : ${1}'.format(token_counter, round( (token_counter / 1000) * 0.002, 5)))
 
     with st.sidebar.expander("🔧 SETTINGS", expanded=True):
         settings["with_cache"] = st.toggle('Cache Results', value=True)

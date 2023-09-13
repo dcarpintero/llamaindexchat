@@ -1,6 +1,6 @@
-# Chat with Web3 Papers and Docs
+# Chat with 🦙 LlamaIndex Docs 🗂️
 
-Question-Answering application to query Web3 papers and docs. Powered by Streamlit and LlamaIndex.
+Web-based App to chat with LlamaIndex Docs using Streamlit, LLamaIndex and OpenaI.
 
 ## 🚀 Quickstart
 
@@ -37,8 +37,9 @@ streamlit run ./app.py
 
 ## 👩‍💻 Streamlit Web App
 
-Demo Web App deployed to [Streamlit Cloud](https://streamlit.io/cloud) and available at https://chatwithweb3.streamlit.app/ 
+Demo Web App deployed to [Streamlit Cloud](https://streamlit.io/cloud) and available at https://llamaindexchat.streamlit.app/ 
 
 ## 📚 References
 
+- [LLamaIndex Doc Reference](https://gpt-index.readthedocs.io/en/latest/index.html)
 - [Get Started with Streamlit Cloud](https://docs.streamlit.io/streamlit-community-cloud/get-started)

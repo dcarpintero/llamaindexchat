@@ -9,7 +9,12 @@
   <img src="./assets/llamaindexchat.png">
 </p>
 
-Chatbot App using [LlamaIndex](https://www.llamaindex.ai/) to augment OpenAI GPT-3.5 with the [LlamaIndex Documentation](https://gpt-index.readthedocs.io/en/latest/index.html). Works with Streamlit >= 1.26. 
+Chatbot using [LlamaIndex](https://www.llamaindex.ai/) to supplement the OpenAI GPT-3.5 Large Language Model (LLM) with the [LlamaIndex Documentation](https://gpt-index.readthedocs.io/en/latest/index.html). Main features:
+
+- **Transparency and Evaluation**: by customizing the metadata field of documents (and nodes), the App is able to provide links to the sources of the responses, along with author and relevance score of each source node. This ensures the answers can be cross-referenced with the original content to check for accuracy.
+- **Estimating Inference Costs**: tracks the number of token outputs to help keep inference costs under control.
+- **Reducing Costs**: persists storage including embedding vectors, and caches results to reduce the number of calls to the LLM.
+- **Usability**: includes suggestions for questions, and basic functionality to clear chat history.
 
 ## 🦙 What's LlamaIndex?
 
@@ -17,7 +22,7 @@ Chatbot App using [LlamaIndex](https://www.llamaindex.ai/) to augment OpenAI GPT
 
 ## 📋 How does it work?
 
-LlamaIndex enriches Large Language Models (GPT-3.5 in our case) with a custom knowledge base through a process called [Retrieval Augmented Generation (RAG)](https://research.ibm.com/blog/retrieval-augmented-generation-RAG):
+LlamaIndex enriches LLMs (for simplicity, we default the [ServiceContext](https://gpt-index.readthedocs.io/en/latest/core_modules/supporting_modules/service_context.html) to OpenAI GPT-3.5 which is then used for indexing and querying) with a custom knowledge base through a process called [Retrieval Augmented Generation (RAG)](https://research.ibm.com/blog/retrieval-augmented-generation-RAG) that involves the following steps:
 
 - **Connect to a External Datasource**: We use the [Github Repository Loader](https://llamahub.ai/l/github_repo) available at [LlamaHub](https://llamahub.ai/) (an open-source repository for data loaders) to connect to the Github repository containing the markdown files of the LlamaIndex Docs.
 
@@ -33,7 +38,7 @@ def initialize_github_loader(github_token: str) -> GithubRepositoryReader:
     return loader
 ```
 
-- **Construct Documents**: The markdown files are ingested and automatically converted to Document objects. In addition, we add the dictionary {'filename': '', 'author': ''} to the metadata of each document (which will be inhereited by the nodes). This will allow us to retrieve and display the data sources and scores in the chatbot responses to make our App more transparent:
+- **Construct Documents**: The markdown files of the Github repository are ingested and automatically converted to Document objects. In addition, we add the dictionary {'filename': '', 'author': ''} to the metadata of each document (which will be inhereited by the nodes). This will allow us to retrieve and display the data sources and scores in the chatbot responses to make our App more transparent:
 
 ```python
 def load_and_index_data(loader: GithubRepositoryReader) -> :
@@ -43,11 +48,9 @@ def load_and_index_data(loader: GithubRepositoryReader) -> :
     docs = loader.load_data(branch="main")
     for doc in docs:
         doc.metadata = {'filename': doc.extra_info['file_name'], 'author': "LlamaIndex"}
-        
-    return docs
 ```
 
-- **Parse Nodes**: Nodes represent a *chunk* of a source Document, we have define a chunk size of '1024' with an overlap of '32'. Similar to Documents, Nodes contain metadata and relationship information with other nodes.
+- **Parse Nodes**: Nodes represent a *chunk* of a source Document, we have defined a chunk size of '1024' with an overlap of '32'. Similar to Documents, Nodes contain metadata and relationship information with other nodes.
 ```python
     [...]
 
@@ -56,7 +59,7 @@ def load_and_index_data(loader: GithubRepositoryReader) -> :
     nodes = parser.get_nodes_from_documents(docs)
 ```
 
-- **Indexing**: An Index is a data structure that allows us to quickly retrieve relevant context for a user query. For LlamaIndex, it's the core foundation for retrieval-augmented generation (RAG) use-cases. LlamaIndex provides different types of indices, such as the [VectorStoreIndex](https://gpt-index.readthedocs.io/en/latest/core_modules/data_modules/index/index_guide.html), which make LLM (Language Model) calls to compute embeddings for each Node:
+- **Indexing**: An Index is a data structure that allows to quickly retrieve relevant context for a user query. For LlamaIndex, it's the core foundation for retrieval-augmented generation (RAG) use-cases. LlamaIndex provides different types of indices, such as the [VectorStoreIndex](https://gpt-index.readthedocs.io/en/latest/core_modules/data_modules/index/index_guide.html), which makes LLM (while we default to OpenAI GPT-3.5, you might want to customize this part with a [ServiceContext](https://gpt-index.readthedocs.io/en/latest/core_modules/supporting_modules/service_context.html)) calls to compute embeddings for each Node:
 
 ```python
     [...]
@@ -72,7 +75,7 @@ def load_and_index_data(loader: GithubRepositoryReader) -> :
     return index
 ```
 
-- **Querying (with cache)**: Once the index is constructed, querying a vector store index involves fetching the top-k most similar Nodes (by default 2), and passing those into the Response Synthesis module. We rely on the [Streamlit caching mechanism](https://docs.streamlit.io/library/advanced-features/caching) to optimize the performance.
+- **Querying (with cache)**: Once the index is constructed, querying a vector store index involves fetching the top-k most similar Nodes (by default 2), and passing those into the Response Synthesis module, which appends this knowledge to the user's prompt and passes it to the LLM. We rely on the [Streamlit caching mechanism](https://docs.streamlit.io/library/advanced-features/caching) to optimize the performance and reduce the number of calls to the LLM:
 
 ```python
 @st.cache_data(max_entries=1024, show_spinner=False)
@@ -80,10 +83,10 @@ def query_chatengine_cache(prompt, _chat_engine, settings):
     return _chat_engine.chat(prompt)
 ```
 
-- **Parsing Response**: After querying the index, the app parses the response source nodes to extract the filename, author and score of the top-k similar Nodes (from which the answer was retrieved):
+- **Parsing Response**: The App parses the response source nodes to extract the filename, author and score of the top-k similar Nodes (from which the answer was retrieved):
 
 ```python
-def parse(response):
+def get_metadata(response):
     sources = []
     for item in response.source_nodes:
         if hasattr(item, "metadata"):
@@ -102,12 +105,18 @@ def parse(response):
 </p>
 
 
-- **Estimating Inference Cost**: By updating the [Session State](https://docs.streamlit.io/library/api-reference/session-state) variable 'token_counter' after each response, the app tracks the number of token outputs and estimates the overall [GTP-3.5 costs](https://openai.com/pricing). 
+- **Estimating Inference Cost**: By updating the [Session State](https://docs.streamlit.io/library/api-reference/session-state) variable 'token_counter' after each response, the App tracks the number of token outputs and estimates the overall [GTP-3.5 costs](https://openai.com/pricing). 
 
 ```python
-def update_token_counter(response):
-    # 1,000 tokens is about 750 words
-    st.session_state['token_counter'] += round( 0.75 * len(response) )
+def update_token_counters(response):
+    """Update token counters (1,000 tokens is about 750 words)"""
+
+    # update input token counter
+    for item in response.source_nodes:
+        st.session_state['input_token_counter'] += round( 0.75 * len(item.text) )
+
+    # update output token counter
+    st.session_state['output_token_counter'] += round( 0.75 * len(response.response) )
 ```
 
 

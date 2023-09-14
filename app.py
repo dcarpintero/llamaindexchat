@@ -16,8 +16,11 @@ st.set_page_config(
     menu_items={"About": "Built by @dcarpintero with Streamlit & LLamaIndex"},
 )
 
-if 'token_counter' not in st.session_state:
-    st.session_state['token_counter'] = 0
+if 'input_token_counter' not in st.session_state:
+    st.session_state['input_token_counter'] = 0
+
+if 'output_token_counter' not in st.session_state:
+    st.session_state['output_token_counter'] = 0
 
 if 'openai_api_key' in st.session_state:
     openai.api_key = st.session_state['openai_api_key']
@@ -60,15 +63,14 @@ def generate_assistant_response(prompt, chat_engine, settings):
                 response = query_chatengine_cache(prompt, chat_engine)
             else:
                 response = query_chatengine(prompt, chat_engine)
+                update_token_counters(response)
 
             if settings["with_sources"]:
-                st.info(f"The sources of this response are:\n\n {extract_sources(response)}")
+                st.info(f"The sources of this response are:\n\n {format_sources(response)}")
 
             st.write(response.response)
             st.session_state.messages.append(
                 {"role": "assistant", "content": response.response})
-            
-            update_token_counter(response.response)
             
 
 @st.cache_data(max_entries=1024, show_spinner=False)
@@ -82,13 +84,13 @@ def query_chatengine(prompt, chat_engine):
     return chat_engine.chat(prompt)
 
 
-def extract_sources(response):
+def format_sources(response):
     """Format filename, authors and scores of the response source nodes."""
     base = "https://github.com/jerryjliu/llama_index/tree/main/"
-    return "\n".join([f"- {base}{source['filename']} (author: '{source['author']}'; score: {source['score']})\n" for source in parse(response)])
+    return "\n".join([f"- {base}{source['filename']} (author: '{source['author']}'; score: {source['score']})\n" for source in get_metadata(response)])
 
 
-def parse(response):
+def get_metadata(response):
     """Parse response source nodes and return a list of dictionaries with filenames, authors and scores.""" 
     
     sources = []
@@ -102,9 +104,16 @@ def parse(response):
     return sources
 
 
-def update_token_counter(response):
-    # 1,000 tokens is about 750 words
-    st.session_state['token_counter'] += round( 0.75 * len(response) )
+def update_token_counters(response):
+    """Update token counters (1,000 tokens is about 750 words)"""
+
+    # update input token counter
+    for item in response.source_nodes:
+        st.session_state['input_token_counter'] += round( 0.75 * len(item.text) )
+
+    # update output token counter
+    st.session_state['output_token_counter'] += round( 0.75 * len(response.response) )
+    
 
 def sidebar():
     """Configure the sidebar and return the user's preferences."""
@@ -116,16 +125,22 @@ def sidebar():
         "[Get an OpenAI API key](https://platform.openai.com/account/api-keys)"
 
     with st.sidebar.expander("💲 GPT3.5 COST ESTIMATION", expanded=True):
-        token_counter = st.session_state['token_counter']
-        st.markdown('Cost per 1k tokens: $0.002')
-        st.markdown('Estimation ({0} tokens) : ${1}'.format(token_counter, round( (token_counter / 1000) * 0.002, 5)))
+        i_tokens = st.session_state['input_token_counter']
+        o_tokens = st.session_state['output_token_counter']
+        st.markdown(f'Input: {i_tokens} tokens')
+        st.markdown(f'Output: {o_tokens} tokens')
+
+        i_cost = (i_tokens / 1000) * 0.0015
+        o_cost = (o_tokens / 1000) * 0.002
+        st.markdown('**Estimated Cost: ${0}**'.format(round(i_cost + o_cost, 5)))
+        "[OpenAI Pricing](https://openai.com/pricing)"
 
     with st.sidebar.expander("🔧 SETTINGS", expanded=True):
         settings["with_cache"] = st.toggle('Cache Results', value=True)
         settings["with_sources"] = st.toggle('Display Sources', value=True)
         settings["with_streaming"] = st.toggle('Streaming', value=False, disabled=True)
 
-    st.sidebar.button('Clear Messages', type="primary", on_click=clear_chat_history)
+    st.sidebar.button('Clear Messages', type="primary", on_click=clear_chat_history) 
     st.sidebar.divider()
     with st.sidebar:
         "[![LlamaIndex Docs](https://img.shields.io/badge/LlamaIndex%20Docs-gray)](https://gpt-index.readthedocs.io/en/latest/index.html)"
@@ -133,7 +148,8 @@ def sidebar():
     return settings
 
 def layout(settings):
-    # Main
+    """"Layout"""
+
     st.header("Chat with 🦙 LlamaIndex Docs 🗂️")
 
     # Get Started

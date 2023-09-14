@@ -33,7 +33,7 @@ def initialize_github_loader(github_token: str) -> GithubRepositoryReader:
     return loader
 ```
 
-- **Construct Documents**: The markdown files are parsed and automatically converted to Document objects. In addition, we add {'filename': '', 'author': ''} to the metadata of each document (which will be inhereited by the nodes). This will allow us to retrieve and display the data sources in the chatbot responses:
+- **Construct Documents**: The markdown files are ingested and automatically converted to Document objects. In addition, we add the dictionary {'filename': '', 'author': ''} to the metadata of each document (which will be inhereited by the nodes). This will allow us to retrieve and display the data sources and scores in the chatbot responses to make our App more transparent:
 
 ```python
 def load_and_index_data(loader: GithubRepositoryReader) -> :
@@ -47,12 +47,12 @@ def load_and_index_data(loader: GithubRepositoryReader) -> :
     return docs
 ```
 
-- **Parse Nodes**: Nodes represent a *chunk* of a source Document, we have define a chunk size of '1024' with an overlap among consecutive chunks of '32'. Similar to Documents, Nodes contain metadata and relationship information with other nodes.
+- **Parse Nodes**: Nodes represent a *chunk* of a source Document, we have define a chunk size of '1024' with an overlap of '32'. Similar to Documents, Nodes contain metadata and relationship information with other nodes.
 ```python
     [...]
 
     logging.info("Parsing documents into nodes...")
-    parser = SimpleNodeParser.from_defaultschunk_size=1024, chunk_overlap=32)
+    parser = SimpleNodeParser.from_defaults(chunk_size=1024, chunk_overlap=32)
     nodes = parser.get_nodes_from_documents(docs)
 ```
 
@@ -80,19 +80,21 @@ def query_chatengine_cache(prompt, _chat_engine, settings):
     return _chat_engine.chat(prompt)
 ```
 
-- **Parsing the response**: After querying the index, we parse the response to extract the sources of the top-k similar Nodes:
+- **Parsing Response**: After querying the index, the app parses the response source nodes to extract the filenames and the scores of the top-k similar Nodes (from which the answer was retrieved):
 
 ```python
-def extract_filenames(source_nodes):
-    src = f"The sources of this response are:\n\n"
-    for item in source_nodes:
+def parse(response):
+    sources = []
+    for item in response.source_nodes:
         if hasattr(item, "metadata"):
-            filename = f"'{item.metadata.get('filename')}'\n\n"
-            src += filename
-    return src
+            filename = item.metadata.get('filename')
+            score = float("{:.3f}".format(item.score))
+            sources.append({'filename': filename, 'score': score})
+    
+    return sources
 ```
 
-- **Estimating Inference Cost**: After each response, we update the [Session State](https://docs.streamlit.io/library/api-reference/session-state) variable 'token_counter' to track the number of token outputs and estimate the overall [GTP-3.5 costs](https://openai.com/pricing). 
+- **Estimating Inference Cost**: By updating the [Session State](https://docs.streamlit.io/library/api-reference/session-state) variable 'token_counter' after each response, the app tracks the number of token outputs and estimates the overall [GTP-3.5 costs](https://openai.com/pricing). 
 
 ```python
 def update_token_counter(response):

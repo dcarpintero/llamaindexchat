@@ -24,7 +24,8 @@ if 'openai_api_key' in st.session_state:
 
 @st.cache_resource(show_spinner=False)
 def load_data() -> VectorStoreIndex:
-    """Load VectoreStoreIndex"""
+    """Load VectoreStoreIndex from storage."""
+
     with st.spinner("Loading Vectore Store Index..."):
         index = load_index_from_storage(StorageContext.from_defaults(persist_dir="./storage"))
         return index
@@ -32,6 +33,7 @@ def load_data() -> VectorStoreIndex:
 
 def display_chat_history(messages):
     """Display previous chat messages."""
+
     for message in messages:
         with st.chat_message(message["role"]):
             st.write(message["content"])
@@ -39,6 +41,7 @@ def display_chat_history(messages):
 
 def clear_chat_history():
     """"Clear chat history and reset questions' buttons."""
+
     st.session_state.messages = [
             {"role": "assistant", "content": "Try one of the sample questions or ask your own!"}
         ]
@@ -49,7 +52,7 @@ def clear_chat_history():
 
 
 def generate_assistant_response(prompt, chat_engine, settings):
-    """Generate assistant response and update session state."""
+    """Generate assistant response and update token counter."""
 
     with st.chat_message("assistant"):
         with st.spinner("I am on it..."):
@@ -59,7 +62,7 @@ def generate_assistant_response(prompt, chat_engine, settings):
                 response = query_chatengine(prompt, chat_engine)
 
             if settings["with_sources"]:
-                st.info(extract_filenames(response.source_nodes))
+                st.info(f"The sources of this response are:\n\n {extract_sources(response)}")
 
             st.write(response.response)
             st.session_state.messages.append(
@@ -70,20 +73,32 @@ def generate_assistant_response(prompt, chat_engine, settings):
 
 @st.cache_data(max_entries=1024, show_spinner=False)
 def query_chatengine_cache(prompt, _chat_engine):
+    """Query chat engine and cache results."""
     return _chat_engine.chat(prompt)
 
 
 def query_chatengine(prompt, chat_engine):
+    """Query chat engine."""	
     return chat_engine.chat(prompt)
 
 
-def extract_filenames(source_nodes):
-    src = f"The sources of this response are:\n\n"
-    for item in source_nodes:
+def extract_sources(response):
+    """Format filename and scores of the response source nodes."""
+    return "\n".join([f"{source['filename']} (score: {source['score']})\n" for source in parse(response)])	
+
+
+def parse(response):
+    """Parse response source nodes and return a list of dictionaries with filenames and scores.""" 
+    
+    sources = []
+    for item in response.source_nodes:
         if hasattr(item, "metadata"):
-            filename = f"'{item.metadata.get('filename')}'\n\n"
-            src += filename
-    return src
+            filename = item.metadata.get('filename')
+            score = float("{:.3f}".format(item.score))
+            sources.append({'filename': filename, 'score': score})
+    
+    return sources
+
 
 def update_token_counter(response):
     # 1,000 tokens is about 750 words
@@ -91,6 +106,7 @@ def update_token_counter(response):
 
 def sidebar():
     """Configure the sidebar and return the user's preferences."""
+
     settings = {}
     
     with st.sidebar.expander("🔑 OPENAI-API-KEY", expanded=True):
@@ -178,9 +194,8 @@ def layout(settings):
         
 
 def main():
-    """
-    Set up user preferences, and layout.
-    """
+    """Set up user preferences, and layout"""
+
     settings = sidebar()
     layout(settings)
 

@@ -1,5 +1,7 @@
 """
-Web-based App to chat with LlamaIndex Docs using Streamlit, LLamaIndex and OpenaI.
+Streamlit application that integrates with LlamaIndex and OpenAI's GPT-3.5 to create a conversational interface. 
+Users can ask questions about LlamaIndex Docs, and the application provides relevant answers. 
+The user's OpenAI API key is used to fetch responses from GPT-3.5.
 
 Author:
     @dcarpintero : https://github.com/dcarpintero
@@ -39,6 +41,9 @@ def display_chat_history(messages):
 
     for message in messages:
         with st.chat_message(message["role"]):
+            if st.session_state.with_sources:
+                if "sources" in message:
+                    st.info(f'The sources of this response are:\n\n {message["sources"]}')
             st.write(message["content"])
 
 
@@ -54,22 +59,23 @@ def clear_chat_history():
     st.session_state["btn_rag"] = False
 
 
-def generate_assistant_response(prompt, chat_engine, settings):
+def generate_assistant_response(prompt, chat_engine):
     """Generate assistant response and update token counter."""
 
     with st.chat_message("assistant"):
         with st.spinner("I am on it..."):
-            if settings["with_cache"]:
+            if st.session_state.with_cache:
                 response = query_chatengine_cache(prompt, chat_engine)
             else:
                 response = query_chatengine(prompt, chat_engine)
 
-            if settings["with_sources"]:
-                st.info(f"The sources of this response are:\n\n {format_sources(response)}")
+            message = {"role": "assistant", "content": response.response, "sources": format_sources(response)}
+            st.session_state.messages.append(message)
 
-            st.write(response.response)
-            st.session_state.messages.append(
-                {"role": "assistant", "content": response.response})
+            st.write(message["content"])
+            if st.session_state.with_sources:
+                if "sources" in message:
+                    st.info(f'The sources of this response are:\n\n {message["sources"]}')
             
             update_token_counters(response)
             
@@ -117,9 +123,7 @@ def update_token_counters(response):
 
 
 def sidebar():
-    """Configure the sidebar and return the user's preferences."""
-
-    settings = {}
+    """Configure the sidebar and user's preferences."""
     
     with st.sidebar.expander("🔑 OPENAI-API-KEY", expanded=True):
         st.text_input(label='OPENAI-API-KEY', type='password', key='openai_api_key', label_visibility='hidden').strip()
@@ -137,18 +141,17 @@ def sidebar():
         "[OpenAI Pricing](https://openai.com/pricing)"
 
     with st.sidebar.expander("🔧 SETTINGS", expanded=True):
-        settings["with_cache"] = st.toggle('Cache Results', value=True)
-        settings["with_sources"] = st.toggle('Display Sources', value=True)
-        settings["with_streaming"] = st.toggle('Streaming', value=False, disabled=True)
+        st.toggle('Cache Results', value=True, key="with_cache")
+        st.toggle('Display Sources', value=True, key="with_sources")
+        st.toggle('Streaming', value=False, disabled=True, key="with_streaming")
 
     st.sidebar.button('Clear Messages', type="primary", on_click=clear_chat_history) 
     st.sidebar.divider()
     with st.sidebar:
         "[![LlamaIndex Docs](https://img.shields.io/badge/LlamaIndex%20Docs-gray)](https://gpt-index.readthedocs.io/en/latest/index.html)"
         
-    return settings
 
-def layout(settings):
+def layout():
     """"Layout"""
 
     st.header("Chat with 🦙 LlamaIndex Docs 🗂️")
@@ -207,7 +210,7 @@ def layout(settings):
     # Generate response
     if st.session_state.messages[-1]["role"] != "assistant":
         try:
-            generate_assistant_response(user_input or user_input_button, chat_engine, settings)
+            generate_assistant_response(user_input or user_input_button, chat_engine)
         except Exception as ex:
             st.error(str(ex))
         
@@ -215,8 +218,8 @@ def layout(settings):
 def main():
     """Set up user preferences, and layout"""
 
-    settings = sidebar()
-    layout(settings)
+    sidebar()
+    layout()
 
 if __name__ == "__main__":
     main()

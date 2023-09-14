@@ -70,13 +70,11 @@ def generate_assistant_response(prompt, chat_engine):
                 response = query_chatengine(prompt, chat_engine)
 
             message = {"role": "assistant", "content": response.response, "sources": format_sources(response)}
-            st.session_state.messages.append(message)
-
-            st.write(message["content"])
             if st.session_state.with_sources:
-                if "sources" in message:
-                    st.info(f'The sources of this response are:\n\n {message["sources"]}')
+                st.info(f'The sources of this response are:\n\n {message["sources"]}')
+            st.write(message["content"])
             
+            st.session_state.messages.append(message)
             update_token_counters(response)
             
 

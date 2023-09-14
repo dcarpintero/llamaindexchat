@@ -63,7 +63,6 @@ def generate_assistant_response(prompt, chat_engine, settings):
                 response = query_chatengine_cache(prompt, chat_engine)
             else:
                 response = query_chatengine(prompt, chat_engine)
-                update_token_counters(response)
 
             if settings["with_sources"]:
                 st.info(f"The sources of this response are:\n\n {format_sources(response)}")
@@ -71,6 +70,8 @@ def generate_assistant_response(prompt, chat_engine, settings):
             st.write(response.response)
             st.session_state.messages.append(
                 {"role": "assistant", "content": response.response})
+            
+            update_token_counters(response)
             
 
 @st.cache_data(max_entries=1024, show_spinner=False)
@@ -113,7 +114,7 @@ def update_token_counters(response):
 
     # update output token counter
     st.session_state['output_token_counter'] += round( 0.75 * len(response.response) )
-    
+
 
 def sidebar():
     """Configure the sidebar and return the user's preferences."""
@@ -124,7 +125,7 @@ def sidebar():
         st.text_input(label='OPENAI-API-KEY', type='password', key='openai_api_key', label_visibility='hidden').strip()
         "[Get an OpenAI API key](https://platform.openai.com/account/api-keys)"
 
-    with st.sidebar.expander("💲 GPT3.5 COST ESTIMATION", expanded=True):
+    with st.sidebar.expander("💲 GPT3.5 INFERENCE COST", expanded=True):
         i_tokens = st.session_state['input_token_counter']
         o_tokens = st.session_state['output_token_counter']
         st.markdown(f'Input: {i_tokens} tokens')
@@ -132,7 +133,7 @@ def sidebar():
 
         i_cost = (i_tokens / 1000) * 0.0015
         o_cost = (o_tokens / 1000) * 0.002
-        st.markdown('**Estimated Cost: ${0}**'.format(round(i_cost + o_cost, 5)))
+        st.markdown('**Cost Estimation: ${0}**'.format(round(i_cost + o_cost, 5)))
         "[OpenAI Pricing](https://openai.com/pricing)"
 
     with st.sidebar.expander("🔧 SETTINGS", expanded=True):

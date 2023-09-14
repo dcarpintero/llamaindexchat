@@ -50,9 +50,6 @@ def clear_chat_history():
 
 def generate_assistant_response(prompt, chat_engine, settings):
     """Generate assistant response and update session state."""
-    if not openai.api_key:
-        st.warning("Hi there! Add your OPENAI-API-KEY on the sidebar field to get started!\n\n", icon="🚨")
-        st.stop()
 
     with st.chat_message("assistant"):
         with st.spinner("I am on it..."):

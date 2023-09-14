@@ -24,7 +24,7 @@ Chatbot using [LlamaIndex](https://www.llamaindex.ai/) to supplement the OpenAI 
 
 LlamaIndex enriches LLMs (for simplicity, we default the [ServiceContext](https://gpt-index.readthedocs.io/en/latest/core_modules/supporting_modules/service_context.html) to OpenAI GPT-3.5 which is then used for indexing and querying) with a custom knowledge base through a process called [Retrieval Augmented Generation (RAG)](https://research.ibm.com/blog/retrieval-augmented-generation-RAG) that involves the following steps:
 
-- **Connect to a External Datasource**: We use the [Github Repository Loader](https://llamahub.ai/l/github_repo) available at [LlamaHub](https://llamahub.ai/) (an open-source repository for data loaders) to connect to the Github repository containing the markdown files of the LlamaIndex Docs.
+- **Connecting to a External Datasource**: We use the [Github Repository Loader](https://llamahub.ai/l/github_repo) available at [LlamaHub](https://llamahub.ai/) (an open-source repository for data loaders) to connect to the Github repository containing the markdown files of the LlamaIndex Docs:
 
 ```python
 def initialize_github_loader(github_token: str) -> GithubRepositoryReader:
@@ -38,7 +38,7 @@ def initialize_github_loader(github_token: str) -> GithubRepositoryReader:
     return loader
 ```
 
-- **Construct Documents**: The markdown files of the Github repository are ingested and automatically converted to Document objects. In addition, we add the dictionary {'filename': '', 'author': ''} to the metadata of each document (which will be inhereited by the nodes). This will allow us to retrieve and display the data sources and scores in the chatbot responses to make our App more transparent:
+- **Constructing Documents**: The markdown files of the Github repository are ingested and automatically converted to Document objects. In addition, we add the dictionary {'filename': '', 'author': ''} to the metadata of each document (which will be inhereited by the nodes). This will allow us to retrieve and display the data sources and scores in the chatbot responses to make our App more transparent:
 
 ```python
 def load_and_index_data(loader: GithubRepositoryReader) -> :
@@ -50,7 +50,7 @@ def load_and_index_data(loader: GithubRepositoryReader) -> :
         doc.metadata = {'filename': doc.extra_info['file_name'], 'author': "LlamaIndex"}
 ```
 
-- **Parse Nodes**: Nodes represent a *chunk* of a source Document, we have defined a chunk size of '1024' with an overlap of '32'. Similar to Documents, Nodes contain metadata and relationship information with other nodes.
+- **Parsing Nodes**: Nodes represent a *chunk* of a source Document, we have defined a chunk size of '1024' with an overlap of '32'. Similar to Documents, Nodes contain metadata and relationship information with other nodes.
 ```python
     [...]
 
@@ -59,7 +59,7 @@ def load_and_index_data(loader: GithubRepositoryReader) -> :
     nodes = parser.get_nodes_from_documents(docs)
 ```
 
-- **Indexing**: An Index is a data structure that allows to quickly retrieve relevant context for a user query. For LlamaIndex, it's the core foundation for retrieval-augmented generation (RAG) use-cases. LlamaIndex provides different types of indices, such as the [VectorStoreIndex](https://gpt-index.readthedocs.io/en/latest/core_modules/data_modules/index/index_guide.html), which makes LLM (while we default to OpenAI GPT-3.5, you might want to customize this part with a [ServiceContext](https://gpt-index.readthedocs.io/en/latest/core_modules/supporting_modules/service_context.html)) calls to compute embeddings for each Node:
+- **Indexing**: An Index is a data structure that allows to quickly retrieve relevant context for a user query. For LlamaIndex, it's the core foundation for retrieval-augmented generation (RAG) use-cases. LlamaIndex provides different types of indices, such as the [VectorStoreIndex](https://gpt-index.readthedocs.io/en/latest/core_modules/data_modules/index/index_guide.html), which makes LLM calls to compute embeddings:
 
 ```python
     [...]
@@ -71,11 +71,9 @@ def load_and_index_data(loader: GithubRepositoryReader) -> :
     index.storage_context.persist(persist_dir="./storage")
         
     logging.info("Data-Knowledge ingestion process is completed (OK)")
-
-    return index
 ```
 
-- **Querying (with cache)**: Once the index is constructed, querying a vector store index involves fetching the top-k most similar Nodes (by default 2), and passing those into the Response Synthesis module, which appends this knowledge to the user's prompt and passes it to the LLM. We rely on the [Streamlit caching mechanism](https://docs.streamlit.io/library/advanced-features/caching) to optimize the performance and reduce the number of calls to the LLM:
+- **Querying (with cache)**: Once the index is constructed, querying a vector store index involves fetching the top-k most similar Nodes (by default 2), and passing those into the Response Synthesis module. The top Nodes are then appended to the user's prompt and passed to the LLM. We rely on the [Streamlit caching mechanism](https://docs.streamlit.io/library/advanced-features/caching) to optimize the performance and reduce the number of calls to the LLM:
 
 ```python
 @st.cache_data(max_entries=1024, show_spinner=False)
@@ -105,7 +103,7 @@ def get_metadata(response):
 </p>
 
 
-- **Estimating Inference Cost**: By updating the [Session State](https://docs.streamlit.io/library/api-reference/session-state) variable 'token_counter' after each response, the App tracks the number of token outputs and estimates the overall [GTP-3.5 costs](https://openai.com/pricing). 
+- **Estimating Inference Cost**: By updating the [Session State](https://docs.streamlit.io/library/api-reference/session-state) variables token counter after each response, the App tracks the number of token input and outputs to estimate the overall [GTP-3.5 inference costs](https://openai.com/pricing). 
 
 ```python
 def update_token_counters(response):

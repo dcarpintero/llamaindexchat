@@ -18,6 +18,7 @@ import logging
 
 def load_environment_vars() -> dict:
     """Load required environment variables. Raise an exception if any are missing."""
+    
     load_dotenv()
     
     api_key = os.getenv("OPENAI_API_KEY")

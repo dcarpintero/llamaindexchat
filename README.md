@@ -11,9 +11,9 @@
 
 Chatbot using [LlamaIndex](https://www.llamaindex.ai/) to supplement the OpenAI GPT-3.5 Large Language Model (LLM) with the [LlamaIndex Documentation](https://gpt-index.readthedocs.io/en/latest/index.html). Main features:
 
-- **Transparency and Evaluation**: by customizing the metadata field of documents (and nodes), the App is able to provide links to the sources of the responses, along with author and relevance score of each source node. This ensures the answers can be cross-referenced with the original content to check for accuracy.
-- **Estimating Inference Costs**: tracks the number of token outputs to help keep inference costs under control.
-- **Reducing Costs**: persists storage including embedding vectors, and caches results to reduce the number of calls to the LLM.
+- **Transparency and Evaluation**: by customizing the metadata field of documents (and nodes), the App is able to provide links to the sources of the responses, along with the author and relevance score of each source node. This ensures the answers can be cross-referenced with the original content to check for accuracy.
+- **Estimating Inference Costs**: tracks the number of token inputs and token outputs to help keep inference costs under control.
+- **Reducing Costs**: persists storage including embedding vectors, and caches the questions / responses to reduce the number of calls to the LLM.
 - **Usability**: includes suggestions for questions, and basic functionality to clear chat history.
 
 ## 🦙 What's LlamaIndex?

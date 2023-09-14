@@ -83,19 +83,21 @@ def query_chatengine(prompt, chat_engine):
 
 
 def extract_sources(response):
-    """Format filename and scores of the response source nodes."""
-    return "\n".join([f"{source['filename']} (score: {source['score']})\n" for source in parse(response)])	
+    """Format filename, authors and scores of the response source nodes."""
+    base = "https://github.com/jerryjliu/llama_index/tree/main/"
+    return "\n".join([f"- {base}{source['filename']} (author: '{source['author']}'; score: {source['score']})\n" for source in parse(response)])
 
 
 def parse(response):
-    """Parse response source nodes and return a list of dictionaries with filenames and scores.""" 
+    """Parse response source nodes and return a list of dictionaries with filenames, authors and scores.""" 
     
     sources = []
     for item in response.source_nodes:
         if hasattr(item, "metadata"):
-            filename = item.metadata.get('filename')
+            filename = item.metadata.get('filename').replace('\\', '/')
+            author = item.metadata.get('author')
             score = float("{:.3f}".format(item.score))
-            sources.append({'filename': filename, 'score': score})
+            sources.append({'filename': filename, 'author': author, 'score': score})
     
     return sources
 

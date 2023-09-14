@@ -80,19 +80,27 @@ def query_chatengine_cache(prompt, _chat_engine, settings):
     return _chat_engine.chat(prompt)
 ```
 
-- **Parsing Response**: After querying the index, the app parses the response source nodes to extract the filenames and the scores of the top-k similar Nodes (from which the answer was retrieved):
+- **Parsing Response**: After querying the index, the app parses the response source nodes to extract the filename, author and score of the top-k similar Nodes (from which the answer was retrieved):
 
 ```python
 def parse(response):
     sources = []
     for item in response.source_nodes:
         if hasattr(item, "metadata"):
-            filename = item.metadata.get('filename')
+            filename = item.metadata.get('filename').replace('\\', '/')
+            author = item.metadata.get('author')
             score = float("{:.3f}".format(item.score))
-            sources.append({'filename': filename, 'score': score})
+            sources.append({'filename': filename, 'author': author, 'score': score})
     
     return sources
 ```
+
+- **Transparent Results with Source Citation**: The use of metadata enables to display links to the sources along with the author and relevance scores from which the answer was retrieved:
+
+<p align="center">
+  <img src="./assets/sourcecitation.png">
+</p>
+
 
 - **Estimating Inference Cost**: By updating the [Session State](https://docs.streamlit.io/library/api-reference/session-state) variable 'token_counter' after each response, the app tracks the number of token outputs and estimates the overall [GTP-3.5 costs](https://openai.com/pricing). 
 

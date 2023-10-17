@@ -232,7 +232,7 @@ def main():
     """Set up user preferences, and layout"""
 
     # Workaround to refresh token counters in the dashboard after inference!
-    if 'openai_api_key' not in st.session_state:
+    if not openai.api_key:
         sidebar()
         layout()
     else:

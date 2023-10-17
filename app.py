@@ -146,8 +146,11 @@ def sidebar():
     st.sidebar.button('Clear Messages', type="primary", on_click=clear_chat_history) 
     st.sidebar.divider()
     with st.sidebar:
-        "[![LlamaIndex Docs](https://img.shields.io/badge/LlamaIndex%20Docs-gray)](https://gpt-index.readthedocs.io/en/latest/index.html)"
-        
+        col_ll, col_gh = st.columns([1, 1])
+        with col_ll:
+            "[![LlamaIndex Docs](https://img.shields.io/badge/LlamaIndex%20Docs-gray)](https://gpt-index.readthedocs.io/en/latest/index.html)"
+        with col_gh:
+            "[![Github](https://img.shields.io/badge/Github%20Repo-gray?logo=Github)](https://github.com/dcarpintero/llamaindexchat)"
 
 def layout():
     """"Layout"""

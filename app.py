@@ -230,8 +230,8 @@ def layout():
 
 def main():
     """Set up user preferences, and layout"""
-    layout()
     sidebar()
+    layout()
     
 if __name__ == "__main__":
     main()

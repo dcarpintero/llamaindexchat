@@ -29,9 +29,9 @@ if 'openai_api_key' in st.session_state:
 
 @st.cache_resource(show_spinner=False)
 def load_data() -> VectorStoreIndex:
-    """Load VectoreStoreIndex from storage."""
+    """Load VectorStoreIndex from storage."""
 
-    with st.spinner("Loading Vectore Store Index..."):
+    with st.spinner("Loading Vector Store Index..."):
         index = load_index_from_storage(StorageContext.from_defaults(persist_dir="./storage"))
         return index
 

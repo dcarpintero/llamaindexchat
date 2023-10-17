@@ -6,9 +6,12 @@ The user's OpenAI API key is used to fetch responses from GPT-3.5.
 Author:
     @dcarpintero : https://github.com/dcarpintero
 """
-import streamlit as st
-from llama_index import load_index_from_storage, StorageContext, VectorStoreIndex
+from llama_index.llms import OpenAI
+from llama_index import ServiceContext, StorageContext, load_index_from_storage
+from llama_index.callbacks import CallbackManager, TokenCountingHandler
 import openai
+import tiktoken
+import streamlit as st
 
 
 st.set_page_config(
@@ -18,23 +21,31 @@ st.set_page_config(
     menu_items={"About": "Built by @dcarpintero with Streamlit & LLamaIndex"},
 )
 
-if 'input_token_counter' not in st.session_state:
-    st.session_state['input_token_counter'] = 0
+if 'llm_prompt_tokens' not in st.session_state:
+    st.session_state['llm_prompt_tokens'] = 0
 
-if 'output_token_counter' not in st.session_state:
-    st.session_state['output_token_counter'] = 0
+if 'llm_completion_tokens' not in st.session_state:
+    st.session_state['llm_completion_tokens'] = 0
 
 if 'openai_api_key' in st.session_state:
     openai.api_key = st.session_state['openai_api_key']
 
+
 @st.cache_resource(show_spinner=False)
-def load_data() -> VectorStoreIndex:
+def load_data():
     """Load VectorStoreIndex from storage."""
 
     with st.spinner("Loading Vector Store Index..."):
-        index = load_index_from_storage(StorageContext.from_defaults(persist_dir="./storage"))
-        return index
-
+        token_counter = TokenCountingHandler(
+            tokenizer=tiktoken.encoding_for_model("gpt-3.5-turbo").encode,
+            verbose=False
+        )
+        
+        callback_manager = CallbackManager([token_counter])
+        service_context = ServiceContext.from_defaults(llm=OpenAI(model="gpt-3.5-turbo"), callback_manager=callback_manager)
+        index = load_index_from_storage(StorageContext.from_defaults(persist_dir="./storage"), service_context=service_context)
+    
+        return index, token_counter
 
 def display_chat_history(messages):
     """Display previous chat messages."""
@@ -75,7 +86,6 @@ def generate_assistant_response(prompt, chat_engine):
             st.write(message["content"])
             
             st.session_state.messages.append(message)
-            update_token_counters(response)
             
 
 @st.cache_data(max_entries=1024, show_spinner=False)
@@ -109,29 +119,28 @@ def get_metadata(response):
     return sources
 
 
-def update_token_counters(response):
-    """Update token counters (1,000 tokens is about 750 words)"""
+def update_token_counters(token_counter):
+    """Update token counters """
 
-    # update input token counter
-    for item in response.source_nodes:
-        st.session_state['input_token_counter'] += round( 0.75 * len(item.text) )
+    st.session_state['llm_prompt_tokens'] += token_counter.prompt_llm_token_count
+    st.session_state['llm_completion_tokens'] += token_counter.completion_llm_token_count
 
-    # update output token counter
-    st.session_state['output_token_counter'] += round( 0.75 * len(response.response) )
+    # reset counter to avoid miscounting when the answer is cached!
+    token_counter.reset_counts()
 
 
 def sidebar():
     """Configure the sidebar and user's preferences."""
-    
+
     with st.sidebar.expander("🔑 OPENAI-API-KEY", expanded=True):
         st.text_input(label='OPENAI-API-KEY', type='password', key='openai_api_key', label_visibility='hidden').strip()
         "[Get an OpenAI API key](https://platform.openai.com/account/api-keys)"
 
     with st.sidebar.expander("💲 GPT3.5 INFERENCE COST", expanded=True):
-        i_tokens = st.session_state['input_token_counter']
-        o_tokens = st.session_state['output_token_counter']
-        st.markdown(f'Input: {i_tokens} tokens')
-        st.markdown(f'Output: {o_tokens} tokens')
+        i_tokens = st.session_state['llm_prompt_tokens']
+        o_tokens = st.session_state['llm_completion_tokens']
+        st.markdown(f'LLM Prompt: {i_tokens} tokens')
+        st.markdown(f'LLM Completion: {o_tokens} tokens')
 
         i_cost = (i_tokens / 1000) * 0.0015
         o_cost = (o_tokens / 1000) * 0.002
@@ -152,6 +161,7 @@ def sidebar():
         with col_gh:
             "[![Github](https://img.shields.io/badge/Github%20Repo-gray?logo=Github)](https://github.com/dcarpintero/llamaindexchat)"
 
+
 def layout():
     """"Layout"""
 
@@ -163,7 +173,7 @@ def layout():
         st.stop()
 
     # Load Index
-    index = load_data()
+    index, token_counter = load_data()
     if index:
         chat_engine = index.as_chat_engine(chat_mode="condense_question", verbose=True)
 
@@ -212,6 +222,8 @@ def layout():
     if st.session_state.messages[-1]["role"] != "assistant":
         try:
             generate_assistant_response(user_input or user_input_button, chat_engine)
+            update_token_counters(token_counter)
+
         except Exception as ex:
             st.error(str(ex))
         
@@ -219,8 +231,13 @@ def layout():
 def main():
     """Set up user preferences, and layout"""
 
-    sidebar()
-    layout()
-
+    # Workaround to refresh token counters in the dashboard after inference!
+    if 'openai_api_key' not in st.session_state:
+        sidebar()
+        layout()
+    else:
+        layout()
+        sidebar()
+    
 if __name__ == "__main__":
     main()

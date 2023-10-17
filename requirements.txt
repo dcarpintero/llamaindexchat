@@ -1,8 +1,8 @@
-llama-hub==0.0.29
-llama-index==0.8.24
+llama-hub==0.0.38
+llama-index==0.8.44
 nltk==3.8.1
 openai==0.28.0
 python-dotenv==1.0.0
-streamlit==1.26.0
+streamlit==1.27.2
 tiktoken==0.5.1
 sentence-transformers==2.2.2

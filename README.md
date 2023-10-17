@@ -9,10 +9,10 @@
   <img src="./assets/llamaindexchat.png">
 </p>
 
-Chatbot using [LlamaIndex](https://www.llamaindex.ai/) to supplement the OpenAI GPT-3.5 Large Language Model (LLM) with the [LlamaIndex Documentation](https://gpt-index.readthedocs.io/en/latest/index.html). Main features:
+Chatbot using [LlamaIndex](https://www.llamaindex.ai/) to supplement OpenAI GPT-3.5 Large Language Model (LLM) with the [LlamaIndex Documentation](https://gpt-index.readthedocs.io/en/latest/index.html). Main features:
 
 - **Transparency and Evaluation**: by customizing the metadata field of documents (and nodes), the App is able to provide links to the sources of the responses, along with the author and relevance score of each source node. This ensures the answers can be cross-referenced with the original content to check for accuracy.
-- **Estimating Inference Costs**: tracks the number of token inputs and token outputs to help keep inference costs under control.
+- **Estimating Inference Costs**: tracks 'LLM Prompt Tokens' and 'LLM Completion Tokens' to help keep inference costs under control.
 - **Reducing Costs**: persists storage including embedding vectors, and caches the questions / responses to reduce the number of calls to the LLM.
 - **Usability**: includes suggestions for questions, and basic functionality to clear chat history.
 
@@ -103,18 +103,16 @@ def get_metadata(response):
 </p>
 
 
-- **Estimating Inference Cost**: By updating the [Session State](https://docs.streamlit.io/library/api-reference/session-state) variables token counter after each response, the App tracks the number of token input and outputs to estimate the overall [GTP-3.5 inference costs](https://openai.com/pricing). 
+- **Estimating Inference Cost**: By using [TokenCountingHandler](https://docs.llamaindex.ai/en/stable/examples/callbacks/TokenCountingHandler.html), the App tracks the number of 'LLM Prompt Tokens' and 'LLM Completion Tokens' to estimate the overall [GTP-3.5 inference costs](https://openai.com/pricing). 
 
 ```python
-def update_token_counters(response):
-    """Update token counters (1,000 tokens is about 750 words)"""
-
-    # update input token counter
-    for item in response.source_nodes:
-        st.session_state['input_token_counter'] += round( 0.75 * len(item.text) )
-
-    # update output token counter
-    st.session_state['output_token_counter'] += round( 0.75 * len(response.response) )
+    token_counter = TokenCountingHandler(
+        tokenizer=tiktoken.encoding_for_model("gpt-3.5-turbo").encode,
+        verbose=False
+    )
+    
+    callback_manager = CallbackManager([token_counter])
+    service_context = ServiceContext.from_defaults(llm=OpenAI(model="gpt-3.5-turbo"), callback_manager=callback_manager)
 ```
 
 

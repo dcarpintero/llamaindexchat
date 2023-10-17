@@ -230,14 +230,8 @@ def layout():
 
 def main():
     """Set up user preferences, and layout"""
-
-    # Workaround to refresh token counters in the dashboard after inference!
-    if not openai.api_key:
-        sidebar()
-        layout()
-    else:
-        layout()
-        sidebar()
+    layout()
+    sidebar()
     
 if __name__ == "__main__":
     main()
